@@ -2,6 +2,42 @@ import { z, registry } from '../../lib/registry';
 import { userResponseSchema } from '../users';
 import { PropertyStatus } from './property.enums';
 
+export const propertyCoordinateSchema = z.object({
+  lat: z.number().openapi({ description: 'Latitude', example: -29.7125 }),
+  lng: z.number().openapi({ description: 'Longitude', example: -53.7156 }),
+});
+
+export const carLookupQuerySchema = z.object({
+  car: z
+    .string()
+    .trim()
+    .regex(
+      /^[A-Za-z]{2}-\d{7}-[A-Fa-f0-9]{32}$/,
+      'O número do CAR deve seguir o padrão oficial nacional: UF-XXXXXXX-32HEX (ex: RS-4305108-8C646BEA3C084EEBA1C765BB8E09FA83).',
+    )
+    .openapi({
+      description: 'Número oficial do CAR no SICAR (43 caracteres)',
+      example: 'RS-4305108-8C646BEA3C084EEBA1C765BB8E09FA83',
+    }),
+});
+
+export const carLookupResponseSchema = registry.register(
+  'CarLookupResponse',
+  z.object({
+    car: z.string(),
+    name: z.string(),
+    location: z.string(),
+    municipality: z.string(),
+    state: z.string(),
+    ibgeCode: z.string(),
+    area: z.number().positive(),
+    fiscalModules: z.number().positive(),
+    ownerName: z.string().nullable().optional(),
+    status: z.string(),
+    coordinates: z.array(propertyCoordinateSchema),
+  }),
+);
+
 export const createPropertySchema = registry.register(
   'CreatePropertyRequest',
   z.object({
@@ -13,9 +49,32 @@ export const createPropertySchema = registry.register(
       description: 'Localização/Cidade da propriedade',
       example: 'Santa Maria, RS',
     }),
-    car: z.string().min(5).trim().optional().openapi({
-      description: 'Cadastro Ambiental Rural (CAR)',
-      example: 'RS-4316907-1A2B3C4D5E6F7G8H9I0J',
+    car: z
+      .string()
+      .trim()
+      .regex(
+        /^[A-Za-z]{2}-\d{7}-[A-Fa-f0-9]{32}$/,
+        'O número do CAR deve seguir o padrão oficial nacional: UF-XXXXXXX-32HEX.',
+      )
+      .optional()
+      .openapi({
+        description: 'Cadastro Ambiental Rural (CAR)',
+        example: 'RS-4316907-8821B0912A314B5C8D7E9F0A1B2C3D4E',
+      }),
+    area: z.number().positive().optional().openapi({
+      description: 'Área total da propriedade em hectares',
+      example: 1250.5,
+    }),
+    fiscalModules: z.number().positive().optional().openapi({
+      description: 'Módulos fiscais calculados para a propriedade',
+      example: 35.7,
+    }),
+    ownerName: z.string().min(2).max(120).trim().optional().openapi({
+      description: 'Nome do proprietário/possuidor declarado',
+      example: 'João da Silva',
+    }),
+    coordinates: z.array(propertyCoordinateSchema).optional().openapi({
+      description: 'Vértices do polígono do perímetro da propriedade',
     }),
   }),
 );
@@ -42,6 +101,10 @@ export const propertyResponseSchema = registry.register(
     name: z.string(),
     location: z.string(),
     car: z.string().nullable(),
+    area: z.number().nullable().optional(),
+    fiscalModules: z.number().nullable().optional(),
+    ownerName: z.string().nullable().optional(),
+    coordinates: z.array(propertyCoordinateSchema).nullable().optional(),
     status: z.nativeEnum(PropertyStatus),
     ownerId: z.string().uuid(),
     owner: userResponseSchema.optional(),

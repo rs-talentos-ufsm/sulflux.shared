@@ -133,6 +133,35 @@ var PropertyStatus = {
 };
 
 // src/modules/property/property.schemas.ts
+var propertyCoordinateSchema = z.object({
+  lat: z.number().openapi({ description: "Latitude", example: -29.7125 }),
+  lng: z.number().openapi({ description: "Longitude", example: -53.7156 })
+});
+var carLookupQuerySchema = z.object({
+  car: z.string().trim().regex(
+    /^[A-Za-z]{2}-\d{7}-[A-Fa-f0-9]{32}$/,
+    "O n\xFAmero do CAR deve seguir o padr\xE3o oficial nacional: UF-XXXXXXX-32HEX (ex: RS-4305108-8C646BEA3C084EEBA1C765BB8E09FA83)."
+  ).openapi({
+    description: "N\xFAmero oficial do CAR no SICAR (43 caracteres)",
+    example: "RS-4305108-8C646BEA3C084EEBA1C765BB8E09FA83"
+  })
+});
+var carLookupResponseSchema = registry.register(
+  "CarLookupResponse",
+  z.object({
+    car: z.string(),
+    name: z.string(),
+    location: z.string(),
+    municipality: z.string(),
+    state: z.string(),
+    ibgeCode: z.string(),
+    area: z.number().positive(),
+    fiscalModules: z.number().positive(),
+    ownerName: z.string().nullable().optional(),
+    status: z.string(),
+    coordinates: z.array(propertyCoordinateSchema)
+  })
+);
 var createPropertySchema = registry.register(
   "CreatePropertyRequest",
   z.object({
@@ -144,9 +173,27 @@ var createPropertySchema = registry.register(
       description: "Localiza\xE7\xE3o/Cidade da propriedade",
       example: "Santa Maria, RS"
     }),
-    car: z.string().min(5).trim().optional().openapi({
+    car: z.string().trim().regex(
+      /^[A-Za-z]{2}-\d{7}-[A-Fa-f0-9]{32}$/,
+      "O n\xFAmero do CAR deve seguir o padr\xE3o oficial nacional: UF-XXXXXXX-32HEX."
+    ).optional().openapi({
       description: "Cadastro Ambiental Rural (CAR)",
-      example: "RS-4316907-1A2B3C4D5E6F7G8H9I0J"
+      example: "RS-4316907-8821B0912A314B5C8D7E9F0A1B2C3D4E"
+    }),
+    area: z.number().positive().optional().openapi({
+      description: "\xC1rea total da propriedade em hectares",
+      example: 1250.5
+    }),
+    fiscalModules: z.number().positive().optional().openapi({
+      description: "M\xF3dulos fiscais calculados para a propriedade",
+      example: 35.7
+    }),
+    ownerName: z.string().min(2).max(120).trim().optional().openapi({
+      description: "Nome do propriet\xE1rio/possuidor declarado",
+      example: "Jo\xE3o da Silva"
+    }),
+    coordinates: z.array(propertyCoordinateSchema).optional().openapi({
+      description: "V\xE9rtices do pol\xEDgono do per\xEDmetro da propriedade"
     })
   })
 );
@@ -168,6 +215,10 @@ var propertyResponseSchema = registry.register(
     name: z.string(),
     location: z.string(),
     car: z.string().nullable(),
+    area: z.number().nullable().optional(),
+    fiscalModules: z.number().nullable().optional(),
+    ownerName: z.string().nullable().optional(),
+    coordinates: z.array(propertyCoordinateSchema).nullable().optional(),
     status: z.nativeEnum(PropertyStatus),
     ownerId: z.string().uuid(),
     owner: userResponseSchema.optional(),
@@ -273,6 +324,346 @@ var fieldQuerySchema = z.object({
   })
 });
 
+// src/modules/cycle/cycle.enums.ts
+var CycleType = {
+  Commercial: "COMMERCIAL",
+  Cover: "COVER",
+  Fallow: "FALLOW"
+};
+
+// src/modules/cycle/cycle.schemas.ts
+var createFieldInputSchema = z.object({
+  category: z.string().min(1).max(100),
+  product: z.string().min(1).max(150),
+  quantity: z.string().min(1).max(100),
+  date: z.coerce.date()
+});
+var fieldInputResponseSchema = z.object({
+  id: z.string().uuid(),
+  category: z.string(),
+  product: z.string(),
+  quantity: z.string(),
+  date: z.date(),
+  cycleId: z.string().uuid(),
+  createdAt: z.date()
+});
+var createCropCycleSchema = registry.register(
+  "CreateCropCycleRequest",
+  z.object({
+    fieldId: z.string().uuid(),
+    tipo: z.nativeEnum(CycleType).default(CycleType.Commercial),
+    titulo: z.string().min(2).max(150),
+    safra: z.string().min(2).max(50),
+    cultura: z.string().max(100).optional(),
+    produtividade: z.string().max(100).optional(),
+    inicio: z.coerce.date(),
+    fim: z.coerce.date(),
+    inputs: z.array(createFieldInputSchema).optional().default([])
+  })
+);
+var cropCycleResponseSchema = registry.register(
+  "CropCycleResponse",
+  z.object({
+    id: z.string().uuid(),
+    tipo: z.nativeEnum(CycleType),
+    titulo: z.string(),
+    safra: z.string(),
+    cultura: z.string().nullable().optional(),
+    produtividade: z.string().nullable().optional(),
+    inicio: z.date(),
+    fim: z.date(),
+    fieldId: z.string().uuid(),
+    inputs: z.array(fieldInputResponseSchema).optional().default([]),
+    createdAt: z.date(),
+    updatedAt: z.date()
+  })
+);
+var saveSeasonCyclesSchema = registry.register(
+  "SaveSeasonCyclesRequest",
+  z.object({
+    safra: z.string(),
+    cycles: z.array(
+      z.object({
+        tipo: z.nativeEnum(CycleType),
+        titulo: z.string(),
+        cultura: z.string().optional(),
+        produtividade: z.string().optional(),
+        inicio: z.coerce.date(),
+        fim: z.coerce.date(),
+        inputs: z.array(createFieldInputSchema).optional().default([])
+      })
+    )
+  })
+);
+
+// src/modules/cycle/cycle.types.ts
+import "zod";
+
+// src/modules/monitoring/monitoring.enums.ts
+var MonitoringEventType = {
+  Ready: "READY",
+  Processing: "PROCESSING",
+  Sent: "SENT",
+  Season: "SEASON"
+};
+
+// src/modules/monitoring/monitoring.schemas.ts
+var carbonFluxPointSchema = z.object({
+  mes: z.string(),
+  gpp: z.number(),
+  // Gross Primary Production (gCO2 m-2 d-1)
+  reco: z.number(),
+  // Ecosystem Respiration
+  nee: z.number()
+  // Net Ecosystem Exchange
+});
+var carbonInsightSchema = z.object({
+  title: z.string(),
+  tone: z.enum(["warn", "info", "good"]),
+  text: z.string()
+});
+var carbonAnalysisResponseSchema = registry.register(
+  "CarbonAnalysisResponse",
+  z.object({
+    safra: z.string(),
+    fieldId: z.string().uuid(),
+    fieldName: z.string(),
+    propertyName: z.string(),
+    series: z.array(carbonFluxPointSchema),
+    kpis: z.object({
+      gppTotal: z.number(),
+      recoTotal: z.number(),
+      neeTotal: z.number(),
+      // Balanço líquido (sumidouro se negativo)
+      sequestroLiquido: z.string()
+      // ex: "-18,4 t CO2e"
+    }),
+    gridHeatmap: z.array(z.array(z.number())),
+    // Matriz Sentinel-2A
+    insights: z.array(carbonInsightSchema)
+  })
+);
+var waterPointSchema = z.object({
+  mes: z.string(),
+  precipitacao: z.number(),
+  // mm
+  agua: z.number(),
+  // umidade do solo %
+  limiar: z.number()
+  // ponto de murcha crítico %
+});
+var waterAnomalySchema = z.object({
+  level: z.enum(["alto", "medio", "baixo"]),
+  period: z.string(),
+  title: z.string(),
+  detail: z.string()
+});
+var waterAnalysisResponseSchema = registry.register(
+  "WaterAnalysisResponse",
+  z.object({
+    safra: z.string(),
+    fieldId: z.string().uuid(),
+    fieldName: z.string(),
+    propertyName: z.string(),
+    series: z.array(waterPointSchema),
+    kpis: z.object({
+      chuvaAcumulada: z.number(),
+      // mm
+      umidadeMedia: z.number(),
+      // %
+      diasAbaixoLimiar: z.number(),
+      statusHidrico: z.string()
+    }),
+    anomalias: z.array(waterAnomalySchema)
+  })
+);
+var monitoringEventResponseSchema = registry.register(
+  "MonitoringEventResponse",
+  z.object({
+    id: z.string().uuid(),
+    type: z.nativeEnum(MonitoringEventType),
+    title: z.string(),
+    detail: z.string().nullable().optional(),
+    date: z.date(),
+    propertyId: z.string().uuid(),
+    fieldId: z.string().uuid().nullable().optional(),
+    fieldName: z.string().optional()
+  })
+);
+var propertyMonitoringHistorySchema = registry.register(
+  "PropertyMonitoringHistoryResponse",
+  z.object({
+    propertyId: z.string().uuid(),
+    propertyName: z.string(),
+    balancoPorSafra: z.array(
+      z.object({
+        safra: z.string(),
+        balanco: z.number()
+        // toneladas
+      })
+    ),
+    events: z.array(monitoringEventResponseSchema)
+  })
+);
+var talhaoResultsResponseSchema = registry.register(
+  "TalhaoResultsResponse",
+  z.object({
+    fieldId: z.string().uuid(),
+    propertyId: z.string().uuid(),
+    name: z.string(),
+    code: z.string(),
+    area: z.number().nullable(),
+    soilType: z.string().nullable(),
+    kpis: z.object({
+      balancoCarbono: z.string(),
+      estoqueSolo: z.string(),
+      eficienciaHidrica: z.string()
+    }),
+    carbonSeries: z.array(
+      z.object({
+        mes: z.string(),
+        estoque: z.number(),
+        emissao: z.number()
+      })
+    ),
+    waterSeries: z.array(
+      z.object({
+        mes: z.string(),
+        ndvi: z.number(),
+        chuva: z.number()
+      })
+    )
+  })
+);
+var mapTalhaoItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  code: z.string(),
+  area: z.number().nullable(),
+  status: z.string(),
+  soilType: z.string().nullable(),
+  coordinates: z.any().nullable(),
+  propertyId: z.string().uuid(),
+  propertyName: z.string(),
+  location: z.string(),
+  carbonBalance: z.string().optional()
+});
+var mapExplorerResponseSchema = registry.register(
+  "MapExplorerResponse",
+  z.object({
+    talhoes: z.array(mapTalhaoItemSchema),
+    availableLayers: z.array(z.string())
+  })
+);
+
+// src/modules/monitoring/monitoring.types.ts
+import "zod";
+
+// src/modules/documents/document.enums.ts
+var DocumentType = {
+  Pdf: "pdf",
+  Doc: "doc",
+  Spreadsheet: "spreadsheet",
+  Image: "image",
+  Design: "design"
+};
+
+// src/modules/documents/document.schemas.ts
+var createDocumentSchema = registry.register(
+  "CreateDocumentRequest",
+  z.object({
+    name: z.string().min(2).max(200).trim(),
+    type: z.nativeEnum(DocumentType).default(DocumentType.Pdf),
+    size: z.string().min(1).max(50),
+    folder: z.string().min(1).max(100).default("Geral"),
+    fileUrl: z.string().url().optional(),
+    propertyId: z.string().uuid().optional()
+  })
+);
+var documentResponseSchema = registry.register(
+  "DocumentResponse",
+  z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    type: z.nativeEnum(DocumentType),
+    size: z.string(),
+    folder: z.string(),
+    fileUrl: z.string().nullable().optional(),
+    propertyId: z.string().uuid().nullable().optional(),
+    userId: z.string().uuid(),
+    userName: z.string().optional(),
+    createdAt: z.date(),
+    updatedAt: z.date()
+  })
+);
+var documentFolderSchema = z.object({
+  name: z.string(),
+  files: z.number(),
+  theme: z.string()
+});
+
+// src/modules/documents/document.types.ts
+import "zod";
+
+// src/modules/assistant/assistant.schemas.ts
+var citationSchema = z.object({
+  label: z.string(),
+  category: z.string()
+});
+var chatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant"]),
+  text: z.string(),
+  citations: z.array(citationSchema).optional(),
+  createdAt: z.union([z.string(), z.date()]).optional()
+});
+var assistantChatRequestSchema = registry.register(
+  "AssistantChatRequest",
+  z.object({
+    message: z.string().min(1).max(2e3).trim()
+  })
+);
+var assistantChatResponseSchema = registry.register(
+  "AssistantChatResponse",
+  z.object({
+    id: z.string(),
+    role: z.literal("assistant"),
+    text: z.string(),
+    citations: z.array(citationSchema).optional()
+  })
+);
+var assistantHistoryResponseSchema = registry.register(
+  "AssistantHistoryResponse",
+  z.array(chatMessageSchema)
+);
+var assistantClearResponseSchema = registry.register(
+  "AssistantClearResponse",
+  z.object({
+    success: z.boolean(),
+    message: z.string()
+  })
+);
+var suggestedPromptSchema = z.object({
+  label: z.string(),
+  query: z.string(),
+  group: z.enum(["Carbono", "H\xEDdrico", "Talh\xF5es", "Manejo"])
+});
+var assistantContextResponseSchema = registry.register(
+  "AssistantContextResponse",
+  z.object({
+    producerName: z.string(),
+    organization: z.string(),
+    totalProperties: z.number(),
+    activeSeason: z.string(),
+    totalCarbonBalance: z.string(),
+    readyFieldsCount: z.number(),
+    suggestedPrompts: z.array(suggestedPromptSchema)
+  })
+);
+
+// src/modules/assistant/assistant.types.ts
+import "zod";
+
 // src/common/common.schemas.ts
 var rfc7807ErrorSchema = registry.register(
   "ProblemDetails",
@@ -349,33 +740,66 @@ function formatMinutesToReadable(minutes) {
 }
 export {
   AuthEnums,
+  CycleType,
+  DocumentType,
   FieldStatus,
+  MonitoringEventType,
   OpenApiGeneratorV3,
   PropertyStatus,
+  assistantChatRequestSchema,
+  assistantChatResponseSchema,
+  assistantClearResponseSchema,
+  assistantContextResponseSchema,
+  assistantHistoryResponseSchema,
+  carLookupQuerySchema,
+  carLookupResponseSchema,
+  carbonAnalysisResponseSchema,
+  carbonFluxPointSchema,
+  carbonInsightSchema,
+  chatMessageSchema,
+  citationSchema,
   coordinateSchema,
+  createCropCycleSchema,
+  createDocumentSchema,
+  createFieldInputSchema,
   createFieldSchema,
   createPaginatedResponseSchema,
   createPropertySchema,
   createUserSchema,
+  cropCycleResponseSchema,
+  documentFolderSchema,
+  documentResponseSchema,
   fieldIdSchema,
+  fieldInputResponseSchema,
   fieldQuerySchema,
   fieldResponseSchema,
   formatMinutesToReadable,
   loginSchema,
+  mapExplorerResponseSchema,
+  mapTalhaoItemSchema,
   minutesToDecimalHours,
+  monitoringEventResponseSchema,
   paginationMetaSchema,
   paginationSchema,
+  propertyCoordinateSchema,
   propertyIdSchema,
+  propertyMonitoringHistorySchema,
   propertyQuerySchema,
   propertyResponseSchema,
   refreshTokenSchema,
   registry,
   rfc7807ErrorSchema,
+  saveSeasonCyclesSchema,
+  suggestedPromptSchema,
+  talhaoResultsResponseSchema,
   timeStringToMinutes,
   updateFieldSchema,
   updatePropertySchema,
   updateUserSchema,
   userIdSchema,
   userResponseSchema,
+  waterAnalysisResponseSchema,
+  waterAnomalySchema,
+  waterPointSchema,
   z
 };

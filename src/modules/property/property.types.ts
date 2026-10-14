@@ -5,9 +5,15 @@ import {
   propertyResponseSchema,
   propertyIdSchema,
   propertyQuerySchema,
+  propertyCoordinateSchema,
+  carLookupQuerySchema,
+  carLookupResponseSchema,
 } from './property.schemas';
 import type { PaginatedResultDTO } from '../../common/common.types';
 
+export type PropertyCoordinateDTO = z.infer<typeof propertyCoordinateSchema>;
+export type CarLookupQueryDTO = z.infer<typeof carLookupQuerySchema>;
+export type CarLookupResponseDTO = z.infer<typeof carLookupResponseSchema>;
 export type CreatePropertyDTO = z.infer<typeof createPropertySchema>;
 export type UpdatePropertyDTO = z.infer<typeof updatePropertySchema>;
 export type PropertyResponseDTO = z.infer<typeof propertyResponseSchema>;

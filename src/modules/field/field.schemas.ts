@@ -1,6 +1,5 @@
 import { z, registry } from '../../lib/registry';
 import { FieldStatus } from './field.enums';
-import type { PaginatedResultDTO } from '../../common/common.types';
 import { propertyResponseSchema } from '../property/property.schemas';
 
 export const coordinateSchema = z.object({

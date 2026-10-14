@@ -96,15 +96,52 @@ type UserIdDTO = z.infer<typeof userIdSchema>;
 type UserResponseDTO = z.infer<typeof userResponseSchema>;
 type PaginatedUsersDTO = PaginatedResultDTO<UserResponseDTO>;
 
+declare const propertyCoordinateSchema: z.ZodObject<{
+    lat: z.ZodNumber;
+    lng: z.ZodNumber;
+}, z.core.$strip>;
+declare const carLookupQuerySchema: z.ZodObject<{
+    car: z.ZodString;
+}, z.core.$strip>;
+declare const carLookupResponseSchema: z.ZodObject<{
+    car: z.ZodString;
+    name: z.ZodString;
+    location: z.ZodString;
+    municipality: z.ZodString;
+    state: z.ZodString;
+    ibgeCode: z.ZodString;
+    area: z.ZodNumber;
+    fiscalModules: z.ZodNumber;
+    ownerName: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    status: z.ZodString;
+    coordinates: z.ZodArray<z.ZodObject<{
+        lat: z.ZodNumber;
+        lng: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
 declare const createPropertySchema: z.ZodObject<{
     name: z.ZodString;
     location: z.ZodString;
     car: z.ZodOptional<z.ZodString>;
+    area: z.ZodOptional<z.ZodNumber>;
+    fiscalModules: z.ZodOptional<z.ZodNumber>;
+    ownerName: z.ZodOptional<z.ZodString>;
+    coordinates: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        lat: z.ZodNumber;
+        lng: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 declare const updatePropertySchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     location: z.ZodOptional<z.ZodString>;
     car: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    area: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    fiscalModules: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    ownerName: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    coordinates: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        lat: z.ZodNumber;
+        lng: z.ZodNumber;
+    }, z.core.$strip>>>>;
     status: z.ZodOptional<z.ZodEnum<{
         readonly Active: "ACTIVE";
         readonly Configure: "CONFIGURE";
@@ -115,6 +152,13 @@ declare const propertyResponseSchema: z.ZodObject<{
     name: z.ZodString;
     location: z.ZodString;
     car: z.ZodNullable<z.ZodString>;
+    area: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    fiscalModules: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    ownerName: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    coordinates: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+        lat: z.ZodNumber;
+        lng: z.ZodNumber;
+    }, z.core.$strip>>>>;
     status: z.ZodEnum<{
         readonly Active: "ACTIVE";
         readonly Configure: "CONFIGURE";
@@ -150,6 +194,9 @@ declare const PropertyStatus: {
 };
 type EnumPropertyStatus = (typeof PropertyStatus)[keyof typeof PropertyStatus];
 
+type PropertyCoordinateDTO = z.infer<typeof propertyCoordinateSchema>;
+type CarLookupQueryDTO = z.infer<typeof carLookupQuerySchema>;
+type CarLookupResponseDTO = z.infer<typeof carLookupResponseSchema>;
 type CreatePropertyDTO = z.infer<typeof createPropertySchema>;
 type UpdatePropertyDTO = z.infer<typeof updatePropertySchema>;
 type PropertyResponseDTO = z.infer<typeof propertyResponseSchema>;
@@ -172,11 +219,11 @@ declare const createFieldSchema: z.ZodObject<{
 }, z.core.$strip>;
 declare const updateFieldSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
-    soilType: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     coordinates: z.ZodOptional<z.ZodArray<z.ZodObject<{
         x: z.ZodNumber;
         y: z.ZodNumber;
     }, z.core.$strip>>>;
+    soilType: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     status: z.ZodOptional<z.ZodEnum<{
         readonly Ready: "READY";
         readonly Processing: "PROCESSING";
@@ -202,6 +249,13 @@ declare const fieldResponseSchema: z.ZodObject<{
         name: z.ZodString;
         location: z.ZodString;
         car: z.ZodNullable<z.ZodString>;
+        area: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        fiscalModules: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        ownerName: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        coordinates: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+            lat: z.ZodNumber;
+            lng: z.ZodNumber;
+        }, z.core.$strip>>>>;
         status: z.ZodEnum<{
             readonly Active: "ACTIVE";
             readonly Configure: "CONFIGURE";
@@ -250,6 +304,436 @@ type FieldIdDTO = z.infer<typeof fieldIdSchema>;
 type FieldQueryDTO = z.infer<typeof fieldQuerySchema>;
 type PaginatedFieldsDTO = PaginatedResultDTO<FieldResponseDTO>;
 
+declare const CycleType: {
+    readonly Commercial: "COMMERCIAL";
+    readonly Cover: "COVER";
+    readonly Fallow: "FALLOW";
+};
+type EnumCycleType = (typeof CycleType)[keyof typeof CycleType];
+
+declare const createFieldInputSchema: z.ZodObject<{
+    category: z.ZodString;
+    product: z.ZodString;
+    quantity: z.ZodString;
+    date: z.ZodCoercedDate<unknown>;
+}, z.core.$strip>;
+declare const fieldInputResponseSchema: z.ZodObject<{
+    id: z.ZodString;
+    category: z.ZodString;
+    product: z.ZodString;
+    quantity: z.ZodString;
+    date: z.ZodDate;
+    cycleId: z.ZodString;
+    createdAt: z.ZodDate;
+}, z.core.$strip>;
+declare const createCropCycleSchema: z.ZodObject<{
+    fieldId: z.ZodString;
+    tipo: z.ZodDefault<z.ZodEnum<{
+        readonly Commercial: "COMMERCIAL";
+        readonly Cover: "COVER";
+        readonly Fallow: "FALLOW";
+    }>>;
+    titulo: z.ZodString;
+    safra: z.ZodString;
+    cultura: z.ZodOptional<z.ZodString>;
+    produtividade: z.ZodOptional<z.ZodString>;
+    inicio: z.ZodCoercedDate<unknown>;
+    fim: z.ZodCoercedDate<unknown>;
+    inputs: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        category: z.ZodString;
+        product: z.ZodString;
+        quantity: z.ZodString;
+        date: z.ZodCoercedDate<unknown>;
+    }, z.core.$strip>>>>;
+}, z.core.$strip>;
+declare const cropCycleResponseSchema: z.ZodObject<{
+    id: z.ZodString;
+    tipo: z.ZodEnum<{
+        readonly Commercial: "COMMERCIAL";
+        readonly Cover: "COVER";
+        readonly Fallow: "FALLOW";
+    }>;
+    titulo: z.ZodString;
+    safra: z.ZodString;
+    cultura: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    produtividade: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    inicio: z.ZodDate;
+    fim: z.ZodDate;
+    fieldId: z.ZodString;
+    inputs: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        category: z.ZodString;
+        product: z.ZodString;
+        quantity: z.ZodString;
+        date: z.ZodDate;
+        cycleId: z.ZodString;
+        createdAt: z.ZodDate;
+    }, z.core.$strip>>>>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+}, z.core.$strip>;
+declare const saveSeasonCyclesSchema: z.ZodObject<{
+    safra: z.ZodString;
+    cycles: z.ZodArray<z.ZodObject<{
+        tipo: z.ZodEnum<{
+            readonly Commercial: "COMMERCIAL";
+            readonly Cover: "COVER";
+            readonly Fallow: "FALLOW";
+        }>;
+        titulo: z.ZodString;
+        cultura: z.ZodOptional<z.ZodString>;
+        produtividade: z.ZodOptional<z.ZodString>;
+        inicio: z.ZodCoercedDate<unknown>;
+        fim: z.ZodCoercedDate<unknown>;
+        inputs: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+            category: z.ZodString;
+            product: z.ZodString;
+            quantity: z.ZodString;
+            date: z.ZodCoercedDate<unknown>;
+        }, z.core.$strip>>>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+
+type CreateCropCycleDTO = z.infer<typeof createCropCycleSchema>;
+type CropCycleResponseDTO = z.infer<typeof cropCycleResponseSchema>;
+type CreateFieldInputDTO = z.infer<typeof createFieldInputSchema>;
+type FieldInputResponseDTO = z.infer<typeof fieldInputResponseSchema>;
+type SaveSeasonCyclesDTO = z.infer<typeof saveSeasonCyclesSchema>;
+
+declare const MonitoringEventType: {
+    readonly Ready: "READY";
+    readonly Processing: "PROCESSING";
+    readonly Sent: "SENT";
+    readonly Season: "SEASON";
+};
+type EnumMonitoringEventType = (typeof MonitoringEventType)[keyof typeof MonitoringEventType];
+
+declare const carbonFluxPointSchema: z.ZodObject<{
+    mes: z.ZodString;
+    gpp: z.ZodNumber;
+    reco: z.ZodNumber;
+    nee: z.ZodNumber;
+}, z.core.$strip>;
+declare const carbonInsightSchema: z.ZodObject<{
+    title: z.ZodString;
+    tone: z.ZodEnum<{
+        warn: "warn";
+        info: "info";
+        good: "good";
+    }>;
+    text: z.ZodString;
+}, z.core.$strip>;
+declare const carbonAnalysisResponseSchema: z.ZodObject<{
+    safra: z.ZodString;
+    fieldId: z.ZodString;
+    fieldName: z.ZodString;
+    propertyName: z.ZodString;
+    series: z.ZodArray<z.ZodObject<{
+        mes: z.ZodString;
+        gpp: z.ZodNumber;
+        reco: z.ZodNumber;
+        nee: z.ZodNumber;
+    }, z.core.$strip>>;
+    kpis: z.ZodObject<{
+        gppTotal: z.ZodNumber;
+        recoTotal: z.ZodNumber;
+        neeTotal: z.ZodNumber;
+        sequestroLiquido: z.ZodString;
+    }, z.core.$strip>;
+    gridHeatmap: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    insights: z.ZodArray<z.ZodObject<{
+        title: z.ZodString;
+        tone: z.ZodEnum<{
+            warn: "warn";
+            info: "info";
+            good: "good";
+        }>;
+        text: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const waterPointSchema: z.ZodObject<{
+    mes: z.ZodString;
+    precipitacao: z.ZodNumber;
+    agua: z.ZodNumber;
+    limiar: z.ZodNumber;
+}, z.core.$strip>;
+declare const waterAnomalySchema: z.ZodObject<{
+    level: z.ZodEnum<{
+        alto: "alto";
+        medio: "medio";
+        baixo: "baixo";
+    }>;
+    period: z.ZodString;
+    title: z.ZodString;
+    detail: z.ZodString;
+}, z.core.$strip>;
+declare const waterAnalysisResponseSchema: z.ZodObject<{
+    safra: z.ZodString;
+    fieldId: z.ZodString;
+    fieldName: z.ZodString;
+    propertyName: z.ZodString;
+    series: z.ZodArray<z.ZodObject<{
+        mes: z.ZodString;
+        precipitacao: z.ZodNumber;
+        agua: z.ZodNumber;
+        limiar: z.ZodNumber;
+    }, z.core.$strip>>;
+    kpis: z.ZodObject<{
+        chuvaAcumulada: z.ZodNumber;
+        umidadeMedia: z.ZodNumber;
+        diasAbaixoLimiar: z.ZodNumber;
+        statusHidrico: z.ZodString;
+    }, z.core.$strip>;
+    anomalias: z.ZodArray<z.ZodObject<{
+        level: z.ZodEnum<{
+            alto: "alto";
+            medio: "medio";
+            baixo: "baixo";
+        }>;
+        period: z.ZodString;
+        title: z.ZodString;
+        detail: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const monitoringEventResponseSchema: z.ZodObject<{
+    id: z.ZodString;
+    type: z.ZodEnum<{
+        readonly Ready: "READY";
+        readonly Processing: "PROCESSING";
+        readonly Sent: "SENT";
+        readonly Season: "SEASON";
+    }>;
+    title: z.ZodString;
+    detail: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    date: z.ZodDate;
+    propertyId: z.ZodString;
+    fieldId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    fieldName: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+declare const propertyMonitoringHistorySchema: z.ZodObject<{
+    propertyId: z.ZodString;
+    propertyName: z.ZodString;
+    balancoPorSafra: z.ZodArray<z.ZodObject<{
+        safra: z.ZodString;
+        balanco: z.ZodNumber;
+    }, z.core.$strip>>;
+    events: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        type: z.ZodEnum<{
+            readonly Ready: "READY";
+            readonly Processing: "PROCESSING";
+            readonly Sent: "SENT";
+            readonly Season: "SEASON";
+        }>;
+        title: z.ZodString;
+        detail: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        date: z.ZodDate;
+        propertyId: z.ZodString;
+        fieldId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        fieldName: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const talhaoResultsResponseSchema: z.ZodObject<{
+    fieldId: z.ZodString;
+    propertyId: z.ZodString;
+    name: z.ZodString;
+    code: z.ZodString;
+    area: z.ZodNullable<z.ZodNumber>;
+    soilType: z.ZodNullable<z.ZodString>;
+    kpis: z.ZodObject<{
+        balancoCarbono: z.ZodString;
+        estoqueSolo: z.ZodString;
+        eficienciaHidrica: z.ZodString;
+    }, z.core.$strip>;
+    carbonSeries: z.ZodArray<z.ZodObject<{
+        mes: z.ZodString;
+        estoque: z.ZodNumber;
+        emissao: z.ZodNumber;
+    }, z.core.$strip>>;
+    waterSeries: z.ZodArray<z.ZodObject<{
+        mes: z.ZodString;
+        ndvi: z.ZodNumber;
+        chuva: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const mapTalhaoItemSchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    code: z.ZodString;
+    area: z.ZodNullable<z.ZodNumber>;
+    status: z.ZodString;
+    soilType: z.ZodNullable<z.ZodString>;
+    coordinates: z.ZodNullable<z.ZodAny>;
+    propertyId: z.ZodString;
+    propertyName: z.ZodString;
+    location: z.ZodString;
+    carbonBalance: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+declare const mapExplorerResponseSchema: z.ZodObject<{
+    talhoes: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        code: z.ZodString;
+        area: z.ZodNullable<z.ZodNumber>;
+        status: z.ZodString;
+        soilType: z.ZodNullable<z.ZodString>;
+        coordinates: z.ZodNullable<z.ZodAny>;
+        propertyId: z.ZodString;
+        propertyName: z.ZodString;
+        location: z.ZodString;
+        carbonBalance: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    availableLayers: z.ZodArray<z.ZodString>;
+}, z.core.$strip>;
+
+type CarbonFluxPointDTO = z.infer<typeof carbonFluxPointSchema>;
+type CarbonInsightDTO = z.infer<typeof carbonInsightSchema>;
+type CarbonAnalysisResponseDTO = z.infer<typeof carbonAnalysisResponseSchema>;
+type WaterPointDTO = z.infer<typeof waterPointSchema>;
+type WaterAnomalyDTO = z.infer<typeof waterAnomalySchema>;
+type WaterAnalysisResponseDTO = z.infer<typeof waterAnalysisResponseSchema>;
+type MonitoringEventResponseDTO = z.infer<typeof monitoringEventResponseSchema>;
+type PropertyMonitoringHistoryDTO = z.infer<typeof propertyMonitoringHistorySchema>;
+type TalhaoResultsResponseDTO = z.infer<typeof talhaoResultsResponseSchema>;
+type MapTalhaoItemDTO = z.infer<typeof mapTalhaoItemSchema>;
+type MapExplorerResponseDTO = z.infer<typeof mapExplorerResponseSchema>;
+
+declare const DocumentType: {
+    readonly Pdf: "pdf";
+    readonly Doc: "doc";
+    readonly Spreadsheet: "spreadsheet";
+    readonly Image: "image";
+    readonly Design: "design";
+};
+type EnumDocumentType = (typeof DocumentType)[keyof typeof DocumentType];
+
+declare const createDocumentSchema: z.ZodObject<{
+    name: z.ZodString;
+    type: z.ZodDefault<z.ZodEnum<{
+        readonly Pdf: "pdf";
+        readonly Doc: "doc";
+        readonly Spreadsheet: "spreadsheet";
+        readonly Image: "image";
+        readonly Design: "design";
+    }>>;
+    size: z.ZodString;
+    folder: z.ZodDefault<z.ZodString>;
+    fileUrl: z.ZodOptional<z.ZodString>;
+    propertyId: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+declare const documentResponseSchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    type: z.ZodEnum<{
+        readonly Pdf: "pdf";
+        readonly Doc: "doc";
+        readonly Spreadsheet: "spreadsheet";
+        readonly Image: "image";
+        readonly Design: "design";
+    }>;
+    size: z.ZodString;
+    folder: z.ZodString;
+    fileUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    propertyId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    userId: z.ZodString;
+    userName: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+}, z.core.$strip>;
+declare const documentFolderSchema: z.ZodObject<{
+    name: z.ZodString;
+    files: z.ZodNumber;
+    theme: z.ZodString;
+}, z.core.$strip>;
+
+type CreateDocumentDTO = z.infer<typeof createDocumentSchema>;
+type DocumentResponseDTO = z.infer<typeof documentResponseSchema>;
+type DocumentFolderDTO = z.infer<typeof documentFolderSchema>;
+
+declare const citationSchema: z.ZodObject<{
+    label: z.ZodString;
+    category: z.ZodString;
+}, z.core.$strip>;
+declare const chatMessageSchema: z.ZodObject<{
+    id: z.ZodString;
+    role: z.ZodEnum<{
+        user: "user";
+        assistant: "assistant";
+    }>;
+    text: z.ZodString;
+    citations: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        category: z.ZodString;
+    }, z.core.$strip>>>;
+    createdAt: z.ZodOptional<z.ZodUnion<readonly [z.ZodString, z.ZodDate]>>;
+}, z.core.$strip>;
+declare const assistantChatRequestSchema: z.ZodObject<{
+    message: z.ZodString;
+}, z.core.$strip>;
+declare const assistantChatResponseSchema: z.ZodObject<{
+    id: z.ZodString;
+    role: z.ZodLiteral<"assistant">;
+    text: z.ZodString;
+    citations: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        category: z.ZodString;
+    }, z.core.$strip>>>;
+}, z.core.$strip>;
+declare const assistantHistoryResponseSchema: z.ZodArray<z.ZodObject<{
+    id: z.ZodString;
+    role: z.ZodEnum<{
+        user: "user";
+        assistant: "assistant";
+    }>;
+    text: z.ZodString;
+    citations: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        category: z.ZodString;
+    }, z.core.$strip>>>;
+    createdAt: z.ZodOptional<z.ZodUnion<readonly [z.ZodString, z.ZodDate]>>;
+}, z.core.$strip>>;
+declare const assistantClearResponseSchema: z.ZodObject<{
+    success: z.ZodBoolean;
+    message: z.ZodString;
+}, z.core.$strip>;
+declare const suggestedPromptSchema: z.ZodObject<{
+    label: z.ZodString;
+    query: z.ZodString;
+    group: z.ZodEnum<{
+        Carbono: "Carbono";
+        Hídrico: "Hídrico";
+        Talhões: "Talhões";
+        Manejo: "Manejo";
+    }>;
+}, z.core.$strip>;
+declare const assistantContextResponseSchema: z.ZodObject<{
+    producerName: z.ZodString;
+    organization: z.ZodString;
+    totalProperties: z.ZodNumber;
+    activeSeason: z.ZodString;
+    totalCarbonBalance: z.ZodString;
+    readyFieldsCount: z.ZodNumber;
+    suggestedPrompts: z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        query: z.ZodString;
+        group: z.ZodEnum<{
+            Carbono: "Carbono";
+            Hídrico: "Hídrico";
+            Talhões: "Talhões";
+            Manejo: "Manejo";
+        }>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+
+type CitationDTO = z.infer<typeof citationSchema>;
+type ChatMessageDTO = z.infer<typeof chatMessageSchema>;
+type AssistantChatRequestDTO = z.infer<typeof assistantChatRequestSchema>;
+type AssistantChatResponseDTO = z.infer<typeof assistantChatResponseSchema>;
+type AssistantHistoryResponseDTO = z.infer<typeof assistantHistoryResponseSchema>;
+type AssistantClearResponseDTO = z.infer<typeof assistantClearResponseSchema>;
+type SuggestedPromptDTO = z.infer<typeof suggestedPromptSchema>;
+type AssistantContextResponseDTO = z.infer<typeof assistantContextResponseSchema>;
+
 /**
  * Converte string "HH:mm" em minutos totais desde a meia-noite.
  */
@@ -263,4 +747,4 @@ declare function minutesToDecimalHours(minutes: number): number;
  */
 declare function formatMinutesToReadable(minutes: number): string;
 
-export { AuthEnums, type CreateFieldDTO, type CreatePropertyDTO, type CreateUserDTO, type EnumFieldStatus, type EnumLoginStatus, type EnumPropertyStatus, type FieldIdDTO, type FieldQueryDTO, type FieldResponseDTO, FieldStatus, type LoginAuthDTO, type PaginatedFieldsDTO, type PaginatedPropertiesDTO, type PaginatedResultDTO, type PaginatedUsersDTO, type PaginationMetaDTO, type PaginationQueryDTO, type ProblemDetailsDTO, type PropertyIdDTO, type PropertyQueryDTO, type PropertyResponseDTO, PropertyStatus, type TokenPayloadDTO, type UpdateFieldDTO, type UpdatePropertyDTO, type UpdateUserDTO, type UserIdDTO, type UserResponseDTO, coordinateSchema, createFieldSchema, createPaginatedResponseSchema, createPropertySchema, createUserSchema, fieldIdSchema, fieldQuerySchema, fieldResponseSchema, formatMinutesToReadable, loginSchema, minutesToDecimalHours, paginationMetaSchema, paginationSchema, propertyIdSchema, propertyQuerySchema, propertyResponseSchema, refreshTokenSchema, registry, rfc7807ErrorSchema, timeStringToMinutes, updateFieldSchema, updatePropertySchema, updateUserSchema, userIdSchema, userResponseSchema };
+export { type AssistantChatRequestDTO, type AssistantChatResponseDTO, type AssistantClearResponseDTO, type AssistantContextResponseDTO, type AssistantHistoryResponseDTO, AuthEnums, type CarLookupQueryDTO, type CarLookupResponseDTO, type CarbonAnalysisResponseDTO, type CarbonFluxPointDTO, type CarbonInsightDTO, type ChatMessageDTO, type CitationDTO, type CreateCropCycleDTO, type CreateDocumentDTO, type CreateFieldDTO, type CreateFieldInputDTO, type CreatePropertyDTO, type CreateUserDTO, type CropCycleResponseDTO, CycleType, type DocumentFolderDTO, type DocumentResponseDTO, DocumentType, type EnumCycleType, type EnumDocumentType, type EnumFieldStatus, type EnumLoginStatus, type EnumMonitoringEventType, type EnumPropertyStatus, type FieldIdDTO, type FieldInputResponseDTO, type FieldQueryDTO, type FieldResponseDTO, FieldStatus, type LoginAuthDTO, type MapExplorerResponseDTO, type MapTalhaoItemDTO, type MonitoringEventResponseDTO, MonitoringEventType, type PaginatedFieldsDTO, type PaginatedPropertiesDTO, type PaginatedResultDTO, type PaginatedUsersDTO, type PaginationMetaDTO, type PaginationQueryDTO, type ProblemDetailsDTO, type PropertyCoordinateDTO, type PropertyIdDTO, type PropertyMonitoringHistoryDTO, type PropertyQueryDTO, type PropertyResponseDTO, PropertyStatus, type SaveSeasonCyclesDTO, type SuggestedPromptDTO, type TalhaoResultsResponseDTO, type TokenPayloadDTO, type UpdateFieldDTO, type UpdatePropertyDTO, type UpdateUserDTO, type UserIdDTO, type UserResponseDTO, type WaterAnalysisResponseDTO, type WaterAnomalyDTO, type WaterPointDTO, assistantChatRequestSchema, assistantChatResponseSchema, assistantClearResponseSchema, assistantContextResponseSchema, assistantHistoryResponseSchema, carLookupQuerySchema, carLookupResponseSchema, carbonAnalysisResponseSchema, carbonFluxPointSchema, carbonInsightSchema, chatMessageSchema, citationSchema, coordinateSchema, createCropCycleSchema, createDocumentSchema, createFieldInputSchema, createFieldSchema, createPaginatedResponseSchema, createPropertySchema, createUserSchema, cropCycleResponseSchema, documentFolderSchema, documentResponseSchema, fieldIdSchema, fieldInputResponseSchema, fieldQuerySchema, fieldResponseSchema, formatMinutesToReadable, loginSchema, mapExplorerResponseSchema, mapTalhaoItemSchema, minutesToDecimalHours, monitoringEventResponseSchema, paginationMetaSchema, paginationSchema, propertyCoordinateSchema, propertyIdSchema, propertyMonitoringHistorySchema, propertyQuerySchema, propertyResponseSchema, refreshTokenSchema, registry, rfc7807ErrorSchema, saveSeasonCyclesSchema, suggestedPromptSchema, talhaoResultsResponseSchema, timeStringToMinutes, updateFieldSchema, updatePropertySchema, updateUserSchema, userIdSchema, userResponseSchema, waterAnalysisResponseSchema, waterAnomalySchema, waterPointSchema };
