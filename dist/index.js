@@ -47,6 +47,15 @@ var AuthEnums = {
   }
 };
 
+// src/modules/users/users.enums.ts
+var UserRole = /* @__PURE__ */ ((UserRole2) => {
+  UserRole2["ADMIN"] = "ADMIN";
+  UserRole2["PRODUCER"] = "PRODUCER";
+  UserRole2["INTERMEDIARY"] = "INTERMEDIARY";
+  UserRole2["VIEWER"] = "VIEWER";
+  return UserRole2;
+})(UserRole || {});
+
 // src/modules/users/users.schemas.ts
 var createUserSchema = registry.register(
   "CreateUserRequest",
@@ -68,6 +77,10 @@ var createUserSchema = registry.register(
     }).min(8, { message: "Senha deve ter no m\xEDnimo 8 caracteres." }).max(64, { message: "Senha deve ter no m\xE1ximo 64 caracteres." }).regex(/[A-Z]/, { message: "Senha deve conter letra mai\xFAscula." }).regex(/[a-z]/, { message: "Senha deve conter letra min\xFAscula." }).regex(/[0-9]/, { message: "Senha deve conter n\xFAmero." }).openapi({
       description: "Senha do usu\xE1rio com crit\xE9rios de seguran\xE7a",
       example: "Senha@123"
+    }),
+    role: z.nativeEnum(UserRole).optional().openapi({
+      description: "Papel/perfil de acesso do usu\xE1rio no sistema",
+      example: "PRODUCER" /* PRODUCER */
     }),
     // cellphone: z.string().trim().optional().openapi({
     //   description: 'Número de celular do usuário',
@@ -98,12 +111,22 @@ var updateUserSchema = createUserSchema.partial().omit({ password: true }).exten
 }).refine((data) => Object.keys(data).length > 0, {
   message: "Pelo menos um campo deve ser fornecido para atualiza\xE7\xE3o."
 });
+var updateUserRoleSchema = registry.register(
+  "UpdateUserRoleRequest",
+  z.object({
+    role: z.nativeEnum(UserRole).openapi({
+      description: "Novo papel atribu\xEDdo ao usu\xE1rio",
+      example: "ADMIN" /* ADMIN */
+    })
+  })
+);
 var userResponseSchema = registry.register(
   "UserResponse",
   z.object({
     id: z.string().uuid(),
     name: z.string(),
     email: z.string().email(),
+    role: z.nativeEnum(UserRole).default("PRODUCER" /* PRODUCER */),
     // cellphone: z.string().nullable(),
     // birth_date: z.coerce.date().nullable(),
     // address: z.string().nullable(),
@@ -330,20 +353,70 @@ var CycleType = {
   Cover: "COVER",
   Fallow: "FALLOW"
 };
+var ApplicationCategory = {
+  Fertilizer: "Fertilizante",
+  Defensive: "Defensivo",
+  Seed: "Semente",
+  Inoculant: "Inoculante",
+  Corrective: "Corretivo",
+  Biological: "Biol\xF3gico",
+  Other: "Outro"
+};
+var ApplicationUnit = {
+  KgHa: "kg/ha",
+  LHa: "l/ha",
+  GHa: "g/ha",
+  DoseHa: "dose/ha",
+  TonHa: "ton/ha",
+  ScHa: "sc/ha",
+  MlHa: "ml/ha"
+};
 
 // src/modules/cycle/cycle.schemas.ts
 var createFieldInputSchema = z.object({
-  category: z.string().min(1).max(100),
-  product: z.string().min(1).max(150),
-  quantity: z.string().min(1).max(100),
-  date: z.coerce.date()
+  product: z.string().min(1, "O nome do produto ou insumo \xE9 obrigat\xF3rio.").max(150),
+  category: z.string().min(1).max(100).default("Fertilizante"),
+  date: z.coerce.date(),
+  quantity: z.union([z.number(), z.string()]).transform((val, ctx) => {
+    if (typeof val === "number") {
+      if (val <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A quantidade da aplica\xE7\xE3o deve ser maior que zero."
+        });
+        return 0;
+      }
+      return val;
+    }
+    const numMatch = val.replace(",", ".").match(/[0-9]+(\.[0-9]+)?/);
+    if (!numMatch) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Quantidade num\xE9rica inv\xE1lida."
+      });
+      return 0;
+    }
+    const parsed = parseFloat(numMatch[0]);
+    if (parsed <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A quantidade da aplica\xE7\xE3o deve ser maior que zero."
+      });
+      return 0;
+    }
+    return parsed;
+  }),
+  unit: z.string().min(1).max(30).default("kg/ha"),
+  notes: z.string().max(500).optional().nullable()
 });
 var fieldInputResponseSchema = z.object({
   id: z.string().uuid(),
-  category: z.string(),
   product: z.string(),
-  quantity: z.string(),
+  category: z.string(),
+  quantity: z.number(),
+  unit: z.string(),
   date: z.date(),
+  notes: z.string().nullable().optional(),
   cycleId: z.string().uuid(),
   createdAt: z.date()
 });
@@ -356,6 +429,7 @@ var createCropCycleSchema = registry.register(
     safra: z.string().min(2).max(50),
     cultura: z.string().max(100).optional(),
     produtividade: z.string().max(100).optional(),
+    sequencia: z.number().int().optional(),
     inicio: z.coerce.date(),
     fim: z.coerce.date(),
     inputs: z.array(createFieldInputSchema).optional().default([])
@@ -370,6 +444,7 @@ var cropCycleResponseSchema = registry.register(
     safra: z.string(),
     cultura: z.string().nullable().optional(),
     produtividade: z.string().nullable().optional(),
+    sequencia: z.number().int().nullable().optional(),
     inicio: z.date(),
     fim: z.date(),
     fieldId: z.string().uuid(),
@@ -378,21 +453,22 @@ var cropCycleResponseSchema = registry.register(
     updatedAt: z.date()
   })
 );
+var cycleInputItemSchema = z.object({
+  tipo: z.nativeEnum(CycleType),
+  titulo: z.string(),
+  cultura: z.string().optional(),
+  produtividade: z.string().optional(),
+  sequencia: z.number().int().optional(),
+  inicio: z.coerce.date(),
+  fim: z.coerce.date(),
+  inputs: z.array(createFieldInputSchema).optional().default([])
+});
 var saveSeasonCyclesSchema = registry.register(
   "SaveSeasonCyclesRequest",
   z.object({
-    safra: z.string(),
-    cycles: z.array(
-      z.object({
-        tipo: z.nativeEnum(CycleType),
-        titulo: z.string(),
-        cultura: z.string().optional(),
-        produtividade: z.string().optional(),
-        inicio: z.coerce.date(),
-        fim: z.coerce.date(),
-        inputs: z.array(createFieldInputSchema).optional().default([])
-      })
-    )
+    safra: z.string().min(2, "O nome da safra \xE9 obrigat\xF3rio."),
+    permiteSobreposicao: z.boolean().default(true).optional(),
+    cycles: z.array(cycleInputItemSchema).min(1, "Pelo menos um ciclo de safra deve ser informado.")
   })
 );
 
@@ -664,6 +740,70 @@ var assistantContextResponseSchema = registry.register(
 // src/modules/assistant/assistant.types.ts
 import "zod";
 
+// src/modules/gis/gis.schemas.ts
+var gisCoordinateSchema = z.object({
+  lat: z.number(),
+  lng: z.number()
+});
+var gisFeatureSummarySchema = z.object({
+  index: z.number(),
+  name: z.string(),
+  code: z.string().optional(),
+  areaHa: z.number(),
+  perimeterMeters: z.number(),
+  coordinates: z.array(gisCoordinateSchema),
+  properties: z.record(z.string(), z.any()).optional().default({})
+});
+var shapefileImportResponseSchema = registry.register(
+  "ShapefileImportResponse",
+  z.object({
+    totalFeatures: z.number(),
+    boundingBox: z.array(z.number()).length(4),
+    features: z.array(gisFeatureSummarySchema)
+  })
+);
+var confirmShapefileImportSchema = registry.register(
+  "ConfirmShapefileImportRequest",
+  z.object({
+    propertyId: z.string().uuid(),
+    fields: z.array(
+      z.object({
+        name: z.string().min(1).max(100),
+        code: z.string().min(1).max(50),
+        soilType: z.string().optional(),
+        coordinates: z.array(gisCoordinateSchema),
+        area: z.number().optional(),
+        perimeter: z.number().optional()
+      })
+    )
+  })
+);
+
+// src/modules/admin/admin.schemas.ts
+var adminMetricsResponseSchema = registry.register(
+  "AdminMetricsResponse",
+  z.object({
+    totalUsers: z.number(),
+    totalProperties: z.number(),
+    totalFields: z.number(),
+    totalMonitoredAreaHa: z.number(),
+    totalCropCycles: z.number(),
+    usersByRole: z.record(z.nativeEnum(UserRole), z.number()),
+    propertiesByStatus: z.record(z.string(), z.number())
+  })
+);
+var adminUserFilterSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+  search: z.string().optional(),
+  role: z.nativeEnum(UserRole).optional(),
+  isActive: z.preprocess((val) => {
+    if (val === "true") return true;
+    if (val === "false") return false;
+    return val;
+  }, z.boolean()).optional()
+});
+
 // src/common/common.schemas.ts
 var rfc7807ErrorSchema = registry.register(
   "ProblemDetails",
@@ -739,6 +879,8 @@ function formatMinutesToReadable(minutes) {
   return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ""}` : `${m}m`;
 }
 export {
+  ApplicationCategory,
+  ApplicationUnit,
   AuthEnums,
   CycleType,
   DocumentType,
@@ -746,6 +888,9 @@ export {
   MonitoringEventType,
   OpenApiGeneratorV3,
   PropertyStatus,
+  UserRole,
+  adminMetricsResponseSchema,
+  adminUserFilterSchema,
   assistantChatRequestSchema,
   assistantChatResponseSchema,
   assistantClearResponseSchema,
@@ -758,6 +903,7 @@ export {
   carbonInsightSchema,
   chatMessageSchema,
   citationSchema,
+  confirmShapefileImportSchema,
   coordinateSchema,
   createCropCycleSchema,
   createDocumentSchema,
@@ -767,6 +913,7 @@ export {
   createPropertySchema,
   createUserSchema,
   cropCycleResponseSchema,
+  cycleInputItemSchema,
   documentFolderSchema,
   documentResponseSchema,
   fieldIdSchema,
@@ -774,6 +921,8 @@ export {
   fieldQuerySchema,
   fieldResponseSchema,
   formatMinutesToReadable,
+  gisCoordinateSchema,
+  gisFeatureSummarySchema,
   loginSchema,
   mapExplorerResponseSchema,
   mapTalhaoItemSchema,
@@ -790,11 +939,13 @@ export {
   registry,
   rfc7807ErrorSchema,
   saveSeasonCyclesSchema,
+  shapefileImportResponseSchema,
   suggestedPromptSchema,
   talhaoResultsResponseSchema,
   timeStringToMinutes,
   updateFieldSchema,
   updatePropertySchema,
+  updateUserRoleSchema,
   updateUserSchema,
   userIdSchema,
   userResponseSchema,

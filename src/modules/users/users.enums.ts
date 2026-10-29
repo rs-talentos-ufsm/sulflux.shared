@@ -1,0 +1,6 @@
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  PRODUCER = 'PRODUCER',
+  INTERMEDIARY = 'INTERMEDIARY',
+  VIEWER = 'VIEWER',
+}

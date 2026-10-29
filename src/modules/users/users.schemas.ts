@@ -1,4 +1,5 @@
 import { z, registry } from '../../lib/registry';
+import { UserRole } from './users.enums';
 
 export const createUserSchema = registry.register(
   'CreateUserRequest',
@@ -48,6 +49,11 @@ export const createUserSchema = registry.register(
         example: 'Senha@123',
       }),
 
+    role: z.nativeEnum(UserRole).optional().openapi({
+      description: 'Papel/perfil de acesso do usuário no sistema',
+      example: UserRole.PRODUCER,
+    }),
+
     // cellphone: z.string().trim().optional().openapi({
     //   description: 'Número de celular do usuário',
     //   example: '(55) 99999-9999',
@@ -96,6 +102,16 @@ export const updateUserSchema = createUserSchema
     message: 'Pelo menos um campo deve ser fornecido para atualização.',
   });
 
+export const updateUserRoleSchema = registry.register(
+  'UpdateUserRoleRequest',
+  z.object({
+    role: z.nativeEnum(UserRole).openapi({
+      description: 'Novo papel atribuído ao usuário',
+      example: UserRole.ADMIN,
+    }),
+  }),
+);
+
 // O Schema de Resposta
 export const userResponseSchema = registry.register(
   'UserResponse',
@@ -103,6 +119,7 @@ export const userResponseSchema = registry.register(
     id: z.string().uuid(),
     name: z.string(),
     email: z.string().email(),
+    role: z.nativeEnum(UserRole).default(UserRole.PRODUCER),
     // cellphone: z.string().nullable(),
     // birth_date: z.coerce.date().nullable(),
     // address: z.string().nullable(),

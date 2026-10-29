@@ -6,6 +6,8 @@ export * from './modules/cycle';
 export * from './modules/monitoring';
 export * from './modules/documents';
 export * from './modules/assistant';
+export * from './modules/gis';
+export * from './modules/admin';
 
 export * from './common/';
 export * from './utils/';
